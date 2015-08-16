@@ -2,6 +2,7 @@
 #-- Project file /home/user/Desktop/Lattice projects/JTAGsniffer/JTAGsniffer/JTAGsniffer_syn.prj
 #project files
 
+add_file -vhdl -lib work "main.vhdl" 
 #implementation: "JTAGsniffer_Implmnt"
 impl -add JTAGsniffer_Implmnt -type fpga
 
