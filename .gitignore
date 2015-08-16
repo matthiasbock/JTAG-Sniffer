@@ -27,3 +27,10 @@
 licbug.txt
 stdout.log
 synlog.tcl
+
+*_Implmnt/AutoConstraint_*.sdc
+*_Implmnt/sbt/Log/
+*_Implmnt/sbt/Temp/
+*_Implmnt/sbt/netlist/
+*_Implmnt/sbt/outputs/gui/*.cfg
+
