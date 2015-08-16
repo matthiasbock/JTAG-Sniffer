@@ -32,5 +32,5 @@ synlog.tcl
 *_Implmnt/sbt/Log/
 *_Implmnt/sbt/Temp/
 *_Implmnt/sbt/netlist/
-*_Implmnt/sbt/outputs/gui/*.cfg
+*_Implmnt/sbt/outputs/
 
