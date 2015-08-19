@@ -6,9 +6,9 @@ DevicePower=
 NetlistFile=JTAGsniffer_Implmnt/JTAGsniffer.edf
 AdditionalEDIFFile=
 IPEDIFFile=
-DesignLib=JTAGsniffer_Implmnt/sbt/netlist/oadb-JTAGsniffer
-DesignView=_rt
-DesignCell=JTAGsniffer
+DesignLib=JTAGsniffer_Implmnt/sbt/netlist/oadb-JTAG_TAP
+DesignView=_ep
+DesignCell=JTAG_TAP
 SynthesisSDCFile=JTAGsniffer_Implmnt/JTAGsniffer.scf
 UserPinConstraintFile=
 UserSDCFile=
@@ -28,11 +28,11 @@ TimingPathNumberStick=0
 
 [Project]
 ProjectVersion=2.0
-Version=Lattice Semiconductor Corporation iCEcube - Release: 2014.12.27052 - Build Date: Dec 8 2014 15:51:44
+Version=Lattice Semiconductor Corporation iCEcube - Release: 2014.12.27052 - Build Date: Dec 8 2014 15:21:57
 ProjectName=JTAGsniffer
 Vendor=SiliconBlue
 Synthesis=synplify
-ProjectVFiles=main.vhdl=work
+ProjectVFiles=main.vhdl=work,jtag.vhdl,uart.vhdl
 ProjectCFiles=
 CurImplementation=JTAGsniffer_Implmnt
 Implementations=JTAGsniffer_Implmnt

@@ -3,6 +3,8 @@
 #project files
 
 add_file -vhdl -lib work "main.vhdl" 
+add_file -vhdl -lib work "jtag.vhdl" 
+add_file -vhdl -lib work "uart.vhdl" 
 #implementation: "JTAGsniffer_Implmnt"
 impl -add JTAGsniffer_Implmnt -type fpga
 

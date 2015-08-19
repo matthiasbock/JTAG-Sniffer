@@ -40,9 +40,9 @@ entity JTAGsniffer is
         -- Baud: 115200bps 8N1
         --
         
-        RX : in std_logic;
+        UART_RX : in std_logic;
         -- B10: PIO0_14
-        TX : out std_logic;
+        UART_TX : out std_logic;
         -- B12: PIO0_13
 
         --
@@ -60,47 +60,51 @@ end entity;
 
 architecture main of JTAGsniffer is
 
-    --
-    -- RS232 signals
-    --
-    signal UART_clock : std_logic := '0';
-    type UART_FSM is (idle, receiving, stop);
-    signal UART_state : UART_FSM := idle;
-    signal UART_received_byte : std_logic_vector(7 downto 0) := (others => '0');
-    signal UART_byte_ready : std_logic := '0';
-    
-
-    --
-    -- JTAG state machine
-    --
-    type JTAG_FSM is (
-        test_logic_reset,
-        run_test_idle,
-
-        select_DR_scan,
-        capture_DR,
-        shift_DR,
-        exit1_DR,
-        pause_DR,
-        exit2_DR,
-        update_DR,
-        
-        select_IR_scan,
-        capture_IR,
-        shift_IR,
-        exit1_IR,
-        pause_IR,
-        exit2_IR,
-        update_IR
+    -- import UART module
+    component UART
+        port(
+            clock          : in  std_logic;
+            RX             : in  std_logic;
+            TX             : out std_logic;
+            byte_ready     : out std_logic;
+            received_byte  : out std_logic_vector(7 downto 0)
         );
-    signal JTAG_state : JTAG_FSM := test_logic_reset;
+    end component;
+
+    -- signals for UART usage
+    signal UART_clock           : std_logic := '0';
+    signal UART_byte_ready      : std_logic := '0';
+    signal UART_received_byte   : std_logic_vector(7 downto 0) := (others => '0');
+
+    -- import JTAG module
+    component JTAG_TAP
+        port(
+            TCLK : in std_logic;
+            TRST : in std_logic;
+            TMS  : in std_logic;
+            TDI  : in std_logic;
+            TDO  : in std_logic
+        );
+    end component;
 
 begin
 
     --
-    -- Clock divider for UART
+    -- Create an instance of a serial port
     --
-    process(clock, RX)
+    UART0 : UART port map(
+        clock           => UART_clock,
+        RX              => UART_RX,
+        TX              => UART_TX,
+        byte_ready      => UART_byte_ready,
+        received_byte   => UART_received_byte
+        );
+
+    --
+    -- Clock divider for UART:
+    -- 115200bps/Hz
+    --
+    process(clock, UART_clock)
         variable counter : integer range 0 to 104167 := 0;
     begin
         if clock'event and clock='1' then
@@ -115,49 +119,11 @@ begin
             end if;
         end if;
     end process;
-
+    
     --
-    -- UART receiver
+    -- Output received byte to LEDs
     --
-    process(UART_clock, RX)
-        variable UART_received_bits : integer range 0 to 7 := 0;
-    begin
-        if UART_clock'event and UART_clock='1' then
-
-            case UART_state is
-            
-                -- one start bit
-                when idle =>
-                    UART_byte_ready <= '0';
-                    if RX='1' then
-                        UART_state <= receiving;
-                        UART_received_bits := 0;
-                        UART_received_byte <= (others => '0');
-                    end if;
-                
-                -- 8 data bits
-                when receiving =>
-                    -- shift right and concatenate
-                    UART_received_byte <= RX & UART_received_byte(7 downto 1); 
-                    UART_received_bits := UART_received_bits + 1;  
-                    if UART_received_bits >= 8 then
-                        UART_state <= stop;
-                        UART_byte_ready <= '1';
-                    end if;
-                    
-                -- one stop bit
-                when stop =>
-                    UART_state <= idle;
-
-            end case;
-
-        end if;
-    end process;
-
-    --
-    -- Output received UART byte to LEDs
-    --
-    process(UART_byte_ready)
+    process(UART_byte_ready, UART_received_byte)
     begin
         if UART_byte_ready'event and UART_byte_ready='1' then
             LED0 <= UART_received_byte(0);
@@ -168,135 +134,6 @@ begin
             LED5 <= UART_received_byte(5);
             LED6 <= UART_received_byte(6);
             LED7 <= UART_received_byte(7);
-        end if;
-    end process;
-
-    --
-    -- JTAG state machine follower
-    --
-    process(TRST,TCLK,TMS)
-    begin
-        -- flip-flop
-        if TCLK'event and TCLK='1' then
-
-            -- synchronous reset
-            if TRST='1' then
-                JTAG_state <= test_logic_reset; 
-            else
-
-                case JTAG_state is
-                    when test_logic_reset =>
-                        if TMS='0' then
-                            JTAG_state <= run_test_idle;
-                        end if;
-                        
-                    when run_test_idle =>
-                        if TMS='1' then
-                            JTAG_state <= select_DR_scan;
-                        end if;
-
-                    --
-                    -- data register actions
-                    --
-
-                    when select_DR_scan =>
-                        if TMS='0' then
-                            JTAG_state <= capture_DR;
-                        else
-                            JTAG_state <= select_IR_scan;
-                        end if;
-
-                    when capture_DR =>
-                        if TMS='0' then
-                            JTAG_state <= shift_DR;
-                        else
-                            JTAG_state <= exit1_DR;
-                        end if;
-
-                    when shift_DR =>
-                        if TMS='1' then
-                            JTAG_state <= exit1_DR;
-                        end if;
-
-                    when exit1_DR =>
-                        if TMS='0' then
-                            JTAG_state <= pause_DR;
-                        else
-                            JTAG_state <= update_DR;
-                        end if;
-
-                    when pause_DR =>
-                        if TMS='1' then
-                            JTAG_state <= exit2_DR;
-                        end if;
-
-                    when exit2_DR =>
-                        if TMS='0' then
-                            JTAG_state <= shift_DR;
-                        else
-                            JTAG_state <= update_DR;
-                        end if;
-
-                    when update_DR =>
-                        if TMS='0' then
-                            JTAG_state <= run_test_idle;
-                        else
-                            JTAG_state <= select_DR_scan;
-                        end if;
-                    
-                    --
-                    -- instruction register actions
-                    --
-                    
-                    when select_IR_scan =>
-                        if TMS='0' then
-                            JTAG_state <= capture_IR;
-                        else
-                            JTAG_state <= test_logic_reset;
-                        end if;
-
-                    when capture_IR =>
-                        if TMS='0' then
-                            JTAG_state <= shift_IR;
-                        else
-                            JTAG_state <= exit1_IR;
-                        end if;
-
-                    when shift_IR =>
-                        if TMS='1' then
-                            JTAG_state <= exit1_IR;
-                        end if;
-
-                    when exit1_IR =>
-                        if TMS='0' then
-                            JTAG_state <= pause_IR;
-                        else
-                            JTAG_state <= update_IR;
-                        end if;
-
-                    when pause_IR =>
-                        if TMS='1' then
-                            JTAG_state <= exit2_IR;
-                        end if;
-
-                    when exit2_IR =>
-                        if TMS='0' then
-                            JTAG_state <= shift_IR;
-                        else
-                            JTAG_state <= update_IR;
-                        end if;
-
-                    when update_IR =>
-                        if TMS='0' then
-                            JTAG_state <= run_test_idle;
-                        else
-                            JTAG_state <= select_DR_scan;
-                        end if;
-
-                end case;
-
-            end if;
-
         end if;
     end process;
 
